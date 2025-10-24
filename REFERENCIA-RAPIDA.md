@@ -40,6 +40,15 @@ String result = opt.orElse("default");
 // C#
 string texto = valor ?? "default";           // Null-coalescing
 string? maybeNull = objeto?.Propiedad;       // Null-conditional
+
+// Ejemplo más completo similar a Optional
+public T? GetValue<T>() where T : class
+{
+    // Retorna null si no existe
+    return _value;
+}
+
+var result = GetValue<string>() ?? "default";
 ```
 
 ## Collections
@@ -209,7 +218,7 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
 // C# - EF Core Repository Pattern
 public class ProductoRepository : IProductoRepository
 {
-    private readonly DbContext _context;
+    private readonly ApplicationDbContext _context;
     
     public async Task<List<Producto>> FindByNombreAsync(string nombre)
     {

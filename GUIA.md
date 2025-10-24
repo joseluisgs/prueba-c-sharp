@@ -289,7 +289,7 @@ Este es un proyecto educativo en desarrollo. Las contribuciones son bienvenidas:
 - 🌐 Web: [https://joseluisgs.dev](https://joseluisgs.dev)
 - 🐦 Twitter: [@JoseLuisGS_](https://twitter.com/JoseLuisGS_)
 - 💼 LinkedIn: [joseluisgonsan](https://www.linkedin.com/in/joseluisgonsan)
-- 📧 Email: joseluis.gonzalez@profesor.com
+- 📧 Contacto: A través de GitHub o redes sociales
 
 ## 📄 Licencia
 
