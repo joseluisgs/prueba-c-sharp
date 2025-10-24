@@ -6,14 +6,16 @@ namespace TestContainers.Tests.Services;
 /// Servicio de caché usando Redis
 /// Similar a Spring Cache en Java
 /// </summary>
-public class CacheService
+public class CacheService : IDisposable
 {
+    private readonly ConnectionMultiplexer _connection;
     private readonly IDatabase _database;
+    private bool _disposed;
 
     public CacheService(string connectionString)
     {
-        var connection = ConnectionMultiplexer.Connect(connectionString);
-        _database = connection.GetDatabase();
+        _connection = ConnectionMultiplexer.Connect(connectionString);
+        _database = _connection.GetDatabase();
     }
 
     public async Task<bool> GuardarAsync(string key, string value, TimeSpan? expiration = null)
@@ -60,11 +62,27 @@ public class CacheService
 
     public async Task LimpiarAsync()
     {
-        var endpoints = _database.Multiplexer.GetEndPoints();
-        foreach (var endpoint in endpoints)
+        try
         {
-            var server = _database.Multiplexer.GetServer(endpoint);
-            await server.FlushDatabaseAsync();
+            var endpoints = _connection.GetEndPoints();
+            foreach (var endpoint in endpoints)
+            {
+                var server = _connection.GetServer(endpoint);
+                await server.FlushDatabaseAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Error al limpiar la base de datos Redis", ex);
+        }
+    }
+
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            _connection?.Dispose();
+            _disposed = true;
         }
     }
 }

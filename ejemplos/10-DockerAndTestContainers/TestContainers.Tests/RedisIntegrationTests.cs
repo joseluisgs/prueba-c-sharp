@@ -44,6 +44,7 @@ public class RedisIntegrationTests
     [TearDown]
     public async Task TearDown()
     {
+        _cacheService?.Dispose();
         await _redisContainer.DisposeAsync();
     }
 
@@ -130,10 +131,10 @@ public class RedisIntegrationTests
         const string value = "expiring-value";
 
         // Act
-        await _cacheService.GuardarAsync(key, value, TimeSpan.FromSeconds(1));
+        await _cacheService.GuardarAsync(key, value, TimeSpan.FromMilliseconds(100));
         var valorInicial = await _cacheService.ObtenerAsync(key);
         
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await Task.Delay(TimeSpan.FromMilliseconds(200));
         var valorDespuesExpiracion = await _cacheService.ObtenerAsync(key);
 
         // Assert
