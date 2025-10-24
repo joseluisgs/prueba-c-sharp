@@ -35,11 +35,18 @@ Este repositorio contiene una **migración completa y educativa** de conceptos J
 │   ├── 09-Retrofit/                # HTTP clients declarativos
 │   └── 10-DockerAndTestContainers/ # Testing con contenedores
 │
-├── 📁 api/                         # API completa migrada
-│   ├── TiendaApi.sln              # Solution principal
-│   ├── TiendaApi/                 # Proyecto Web API
-│   ├── TiendaApi.Tests/           # Tests completos
-│   └── docker-compose.yml         # PostgreSQL + Redis + MongoDB
+├── 📁 api/                          # 🆕 API REST COMPLETA - PROYECTO CULMINANTE
+│   ├── TiendaApi/                  # Web API con ASP.NET Core 8
+│   │   ├── Controllers/            # 🔴 Categorías (Exceptions) 🟢 Productos (Result)
+│   │   ├── Services/               # Lógica de negocio con ambos enfoques
+│   │   ├── Repositories/           # Acceso a datos (EF Core)
+│   │   ├── Models/                 # Entidades y DTOs
+│   │   ├── Common/                 # Result Pattern implementation
+│   │   ├── Exceptions/             # Custom exceptions
+│   │   └── Middleware/             # GlobalExceptionHandler
+│   ├── TiendaApi.Tests/            # Tests unitarios e integración
+│   ├── docker-compose.yml          # PostgreSQL + MongoDB + Redis
+│   └── README.md                   # 📖 Documentación completa
 │
 ├── 📁 csharp/                      # Documentación Java → C#
 │   ├── 01-fundamentos/            # Sintaxis y conceptos básicos
@@ -55,6 +62,24 @@ Este repositorio contiene una **migración completa y educativa** de conceptos J
     └── ...                        # Más documentación
 ```
 
+## 🆕 Proyecto Culminante: TiendaApi
+
+La carpeta `api/` contiene una **API REST completa** que demuestra DOS enfoques de manejo de errores:
+
+### 🔴 **Categorías** - Enfoque Tradicional (Exceptions)
+- Similar a Java/Spring Boot
+- `throw new NotFoundException()`
+- GlobalExceptionHandler middleware
+- Try/catch en controllers
+
+### 🟢 **Productos** - Enfoque Moderno (Result Pattern)  
+- Functional programming style
+- `return Result.Success()` o `AppError.NotFound()`
+- Pattern matching en controllers
+- Sin exceptions para lógica de negocio
+
+**Ver [api/README.md](./api/README.md) para documentación completa, comparativas y ejemplos.**
+
 ## Ejemplos Disponibles
 
 | # | Ejemplo | Java Original | C# Migrado | Dificultad | Descripción |
@@ -69,6 +94,7 @@ Este repositorio contiene una **migración completa y educativa** de conceptos J
 | **08** | TenistasReactive | RxJava avanzado | Reactive Extensions | 🔴 Avanzado | Hot/Cold observables, Schedulers |
 | **09** | Retrofit | Retrofit | Refit | 🟢 Básico | HTTP clients declarativos |
 | **10** | TestContainers | TestContainers Java | TestContainers.NET | 🟡 Intermedio | Integration testing con Docker |
+| **🆕 API** | **TiendaApi** | **Spring Boot REST API** | **ASP.NET Core Web API** | **🔴 Avanzado** | **API completa con Exception vs Result Pattern** |
 
 ## Tecnologías Migradas
 
