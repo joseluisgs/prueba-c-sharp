@@ -546,6 +546,8 @@ public async Task<IActionResult> GetById(long id)
 
 El archivo `appsettings.json` debe incluir las siguientes configuraciones:
 
+> ⚠️ **IMPORTANTE SEGURIDAD**: Los valores mostrados son para DESARROLLO. En producción, usa variables de entorno o Azure Key Vault / AWS Secrets Manager para credenciales sensibles.
+
 ```json
 {
   "ConnectionStrings": {
@@ -554,7 +556,7 @@ El archivo `appsettings.json` debe incluir las siguientes configuraciones:
     "Redis": "localhost:6379"
   },
   "Jwt": {
-    "Key": "Your-Secret-Key-Min-32-Chars",
+    "Key": "TiendaApi-JWT-Signing-Key-Must-Be-At-Least-32-Characters-Long-For-Security",
     "Issuer": "TiendaApi",
     "Audience": "TiendaApi",
     "ExpireMinutes": "60"
@@ -575,14 +577,22 @@ El archivo `appsettings.json` debe incluir las siguientes configuraciones:
 }
 ```
 
+> 💡 **Generar JWT Key segura**: Usa `openssl rand -base64 32` o generadores de claves criptográficas.
+
 ### Variables de Entorno (Producción)
 
-Para producción, usa variables de entorno en lugar de valores hardcoded:
+Para producción, **SIEMPRE** usa variables de entorno en lugar de valores hardcoded:
 
 ```bash
-export ConnectionStrings__DefaultConnection="Host=prod-db;Database=tienda;..."
-export Jwt__Key="production-secret-key-very-long"
-export Smtp__Password="secure-password"
+# Generar JWT key segura (ejemplo con openssl)
+export Jwt__Key=$(openssl rand -base64 64)
+
+# Otras configuraciones sensibles
+export ConnectionStrings__DefaultConnection="Host=prod-db;Database=tienda;Username=app_user;Password=$(cat /run/secrets/db_password)"
+export Smtp__Password=$(cat /run/secrets/smtp_password)
+
+# O usando Azure/AWS secrets managers
+export Jwt__Key="@Microsoft.KeyVault(SecretUri=https://...)"
 ```
 
 ## 🧪 Testing de Nuevas Características
