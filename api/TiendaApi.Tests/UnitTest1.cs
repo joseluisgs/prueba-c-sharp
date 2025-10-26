@@ -8,6 +8,7 @@ using TiendaApi.Models.DTOs;
 using TiendaApi.Models.Entities;
 using TiendaApi.Repositories;
 using TiendaApi.Services;
+using TiendaApi.WebSockets;
 
 namespace TiendaApi.Tests;
 
@@ -47,11 +48,20 @@ public class ErrorHandlingComparisonTests
             _mockCategoriaLogger.Object
         );
         
+        var mockWebSocketHandler = new Mock<ProductoWebSocketHandler>(MockBehavior.Loose, Mock.Of<ILogger<ProductoWebSocketHandler>>());
+        var mockEmailService = new Mock<Services.Email.IEmailService>();
+        var mockCacheService = new Mock<Services.Cache.ICacheService>();
+        var mockConfiguration = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
+        
         _productoService = new ProductoService(
             _mockProductoRepo.Object,
             _mockCategoriaRepo.Object,
             _mockMapper.Object,
-            _mockProductoLogger.Object
+            _mockProductoLogger.Object,
+            mockCacheService.Object,
+            mockWebSocketHandler.Object,
+            mockEmailService.Object,
+            mockConfiguration.Object
         );
     }
 
