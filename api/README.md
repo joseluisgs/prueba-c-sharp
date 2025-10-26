@@ -144,6 +144,60 @@ api/TiendaApi/
     └── MongoDbContext.cs       # MongoDB context
 ```
 
+## 🚀 Runtime Features (NEW!)
+
+Esta API ahora incluye características **runtime críticas** que demuestran funcionalidad empresarial completa:
+
+### 🔐 **Autenticación JWT**
+- **Registro de usuarios**: POST `/v1/auth/signup` - Hash de contraseñas con BCrypt
+- **Inicio de sesión**: POST `/v1/auth/signin` - Generación de tokens JWT
+- **Protección de endpoints**: Productos POST/PUT/DELETE requieren autenticación
+- **Tokens JWT**: Symmetric key signing, configurable expiration
+
+### 🔌 **WebSockets en Tiempo Real**
+- **Endpoint WebSocket**: `ws://localhost:5000/ws/v1/productos`
+- **Notificaciones automáticas**: Cuando se crea, actualiza o elimina un producto
+- **Formato de mensaje**:
+  ```json
+  {
+    "type": "CREATED|UPDATED|DELETED",
+    "productoId": 1,
+    "productoNombre": "Laptop Dell",
+    "timestamp": "2024-10-26T10:00:00Z",
+    "data": { ... }
+  }
+  ```
+
+### ⚡ **Caché Redis (Cache-Aside Pattern)**
+- **Productos en caché**: FindAll y FindById usan Redis para mejor rendimiento
+- **TTL configurable**: Expiration time configurable en appsettings.json
+- **Invalidación automática**: Al crear, actualizar o eliminar productos
+- **Conexión**: Redis en localhost:6379 (configurable)
+
+### 📧 **Servicio de Email con Cola en Background**
+- **Email asíncrono**: MailKit SMTP con background worker
+- **Channel/Queue**: Procesamiento no bloqueante de emails
+- **Notificaciones automáticas**: Al crear productos, email al admin
+- **Configuración SMTP**: Configurable en appsettings.json
+
+### 🔍 **GraphQL API**
+- **Endpoint GraphQL**: POST `/graphql` para queries
+- **GraphiQL UI**: `/graphiql` - Interfaz interactiva para explorar el API
+- **Schema**: Queries para productos y categorías
+- **Ejemplo de query**:
+  ```graphql
+  {
+    productos {
+      id
+      nombre
+      precio
+      categoria {
+        nombre
+      }
+    }
+  }
+  ```
+
 ## 🚀 Getting Started
 
 ### Prerequisitos
@@ -470,11 +524,179 @@ public async Task<IActionResult> GetById(long id)
 - **FluentValidation 11.3** - Validation library (similar to Hibernate Validator)
 - **Swashbuckle 6.5** - OpenAPI/Swagger (similar to SpringDoc)
 
+### Runtime Features (NEW!)
+- **BCrypt.Net-Next 4.0.3** - Password hashing (similar to Spring Security BCrypt)
+- **MailKit 4.2.0** - SMTP email client (similar to JavaMailSender)
+- **Microsoft.AspNetCore.Authentication.JwtBearer 8.0.0** - JWT authentication
+- **System.IdentityModel.Tokens.Jwt 8.0.0** - JWT token generation/validation
+- **Microsoft.Extensions.Caching.StackExchangeRedis 8.0.0** - Redis distributed cache
+- **StackExchange.Redis 2.7.0** - Redis client
+- **GraphQL 7.8.0** - GraphQL server implementation
+- **GraphiQL 2.0.0** - GraphQL interactive UI
+
 ### Testing
 - **NUnit 3.14** - Testing framework (similar to JUnit)
 - **Moq 4.20** - Mocking library (similar to Mockito)
 - **FluentAssertions 6.12** - Fluent assertions
 - **Testcontainers.NET 3.6** - Docker containers for testing
+
+## ⚙️ Configuración
+
+### appsettings.json
+
+El archivo `appsettings.json` debe incluir las siguientes configuraciones:
+
+> ⚠️ **IMPORTANTE SEGURIDAD**: Los valores mostrados son para DESARROLLO. En producción, usa variables de entorno o Azure Key Vault / AWS Secrets Manager para credenciales sensibles.
+
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Database=tienda;Username=admin;Password=admin123",
+    "MongoDB": "mongodb://admin:admin123@localhost:27017/tienda?authSource=admin",
+    "Redis": "localhost:6379"
+  },
+  "Jwt": {
+    "Key": "TiendaApi-JWT-Signing-Key-Must-Be-At-Least-32-Characters-Long-For-Security",
+    "Issuer": "TiendaApi",
+    "Audience": "TiendaApi",
+    "ExpireMinutes": "60"
+  },
+  "Smtp": {
+    "Host": "smtp.example.com",
+    "Port": "587",
+    "Username": "noreply@tienda.com",
+    "Password": "your-smtp-password",
+    "FromEmail": "noreply@tienda.com",
+    "FromName": "TiendaApi Notifications",
+    "AdminEmail": "admin@tienda.com"
+  },
+  "Cache": {
+    "DefaultExpirationMinutes": "5",
+    "ProductoCacheTTLMinutes": "10"
+  }
+}
+```
+
+> 💡 **Generar JWT Key segura**: Usa `openssl rand -base64 32` o generadores de claves criptográficas.
+
+### Variables de Entorno (Producción)
+
+Para producción, **SIEMPRE** usa variables de entorno en lugar de valores hardcoded:
+
+```bash
+# Generar JWT key segura (ejemplo con openssl)
+export Jwt__Key=$(openssl rand -base64 64)
+
+# Otras configuraciones sensibles
+export ConnectionStrings__DefaultConnection="Host=prod-db;Database=tienda;Username=app_user;Password=$(cat /run/secrets/db_password)"
+export Smtp__Password=$(cat /run/secrets/smtp_password)
+
+# O usando Azure/AWS secrets managers
+export Jwt__Key="@Microsoft.KeyVault(SecretUri=https://...)"
+```
+
+## 🧪 Testing de Nuevas Características
+
+### 1. Autenticación JWT
+
+```bash
+# Registrar usuario
+curl -X POST http://localhost:5000/v1/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "testuser",
+    "email": "test@example.com",
+    "password": "Password123!"
+  }'
+
+# Respuesta: { "token": "eyJhbGc...", "user": {...} }
+
+# Login
+curl -X POST http://localhost:5000/v1/auth/signin \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "testuser",
+    "password": "Password123!"
+  }'
+
+# Usar token en requests protegidos
+curl -X POST http://localhost:5000/api/productos \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nombre": "Nuevo Producto",
+    "precio": 99.99,
+    "stock": 10,
+    "categoriaId": 1
+  }'
+```
+
+### 2. WebSocket
+
+Conectar con cliente WebSocket:
+
+```javascript
+const ws = new WebSocket('ws://localhost:5000/ws/v1/productos');
+
+ws.onmessage = (event) => {
+  const notification = JSON.parse(event.data);
+  console.log('Notification:', notification);
+  // { type: "CREATED", productoId: 1, productoNombre: "...", ... }
+};
+
+ws.onerror = (error) => console.error('WebSocket Error:', error);
+```
+
+O usando herramientas como [websocat](https://github.com/vi/websocat):
+
+```bash
+websocat ws://localhost:5000/ws/v1/productos
+```
+
+### 3. GraphQL
+
+```bash
+# Query productos con GraphQL
+curl -X POST http://localhost:5000/graphql \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "{ productos { id nombre precio categoria { nombre } } }"
+  }'
+
+# O visitar GraphiQL UI en el navegador
+# http://localhost:5000/graphiql
+```
+
+### 4. Redis Cache
+
+El cache se maneja automáticamente. Para verificar:
+
+```bash
+# Conectar a Redis CLI (si tienes docker)
+docker exec -it tienda-redis redis-cli
+
+# Ver todas las keys
+KEYS TiendaApi:*
+
+# Ver valor de una key
+GET TiendaApi:productos:1
+
+# Ver TTL de una key
+TTL TiendaApi:productos:all
+```
+
+### 5. Email Service
+
+Los emails se envían automáticamente cuando se crea un producto (si SMTP está configurado).
+Para testear sin servidor SMTP real, revisa los logs:
+
+```bash
+dotnet run
+
+# Verás en los logs:
+# [Information] Email queued for background processing to: admin@tienda.com
+# [Warning] SMTP not configured, skipping email send (si no hay config)
+```
 
 ## 📖 Recursos Adicionales
 

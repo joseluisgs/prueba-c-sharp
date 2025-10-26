@@ -1,8 +1,20 @@
+using System.Text;
+using System.Threading.Channels;
+using GraphQL;
+using GraphQL.Types;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using TiendaApi.Data;
+using TiendaApi.GraphQL;
+using TiendaApi.GraphQL.Types;
 using TiendaApi.Middleware;
 using TiendaApi.Repositories;
 using TiendaApi.Services;
+using TiendaApi.Services.Auth;
+using TiendaApi.Services.Cache;
+using TiendaApi.Services.Email;
+using TiendaApi.WebSockets;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,15 +64,80 @@ builder.Services.AddDbContext<TiendaDbContext>(options =>
 // Java Spring Boot: @Repository classes automatically registered
 builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
 builder.Services.AddScoped<IProductoRepository, ProductoRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 // Services
 // Java Spring Boot: @Service classes automatically registered
 builder.Services.AddScoped<CategoriaService>();
 builder.Services.AddScoped<ProductoService>();
 
+// JWT Service
+builder.Services.AddScoped<IJwtService, JwtService>();
+
+// Cache Service (Redis)
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+    options.Configuration = redisConnection;
+    options.InstanceName = "TiendaApi:";
+});
+builder.Services.AddScoped<ICacheService, RedisCacheService>();
+
+// Email Service with Background Worker
+builder.Services.AddSingleton(Channel.CreateUnbounded<EmailMessage>());
+builder.Services.AddScoped<IEmailService, MailKitEmailService>();
+builder.Services.AddHostedService<EmailBackgroundService>();
+
+// WebSocket Handler
+builder.Services.AddSingleton<ProductoWebSocketHandler>();
+
+// GraphQL Services
+builder.Services.AddScoped<IDocumentExecuter, DocumentExecuter>();
+builder.Services.AddScoped<ISchema, TiendaSchema>();
+builder.Services.AddScoped<TiendaQuery>();
+builder.Services.AddScoped<ProductoType>();
+builder.Services.AddScoped<CategoriaType>();
+
 // AutoMapper
 // Java Spring Boot: ModelMapper bean configuration
 builder.Services.AddAutoMapper(typeof(MappingProfile));
+
+// ============================================================================
+// AUTHENTICATION & AUTHORIZATION - Similar to Spring Security
+// ============================================================================
+
+// JWT Authentication
+// Java Spring Boot: Spring Security with JWT filter
+var jwtKey = builder.Configuration["Jwt:Key"] 
+    ?? throw new InvalidOperationException("JWT Key not configured");
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "TiendaApi";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "TiendaApi";
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        ValidateIssuer = true,
+        ValidIssuer = jwtIssuer,
+        ValidateAudience = true,
+        ValidAudience = jwtAudience,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
+    };
+});
+
+// Authorization policies
+// Java Spring Boot: @PreAuthorize("hasRole('ADMIN')")
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("RequireAdminRole", policy => policy.RequireRole("ADMIN"))
+    .AddPolicy("RequireUserRole", policy => policy.RequireRole("USER", "ADMIN"));
 
 // ============================================================================
 // CORS Configuration (for frontend apps)
@@ -97,6 +174,35 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+// GraphiQL UI for GraphQL queries
+// Accessible at /graphiql
+app.MapGet("/graphiql", async context =>
+{
+    context.Response.ContentType = "text/html";
+    await context.Response.WriteAsync(@"
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GraphiQL</title>
+    <link href=""https://unpkg.com/graphiql/graphiql.min.css"" rel=""stylesheet"" />
+</head>
+<body style=""margin: 0;"">
+    <div id=""graphiql"" style=""height: 100vh;""></div>
+    <script crossorigin src=""https://unpkg.com/react/umd/react.production.min.js""></script>
+    <script crossorigin src=""https://unpkg.com/react-dom/umd/react-dom.production.min.js""></script>
+    <script crossorigin src=""https://unpkg.com/graphiql/graphiql.min.js""></script>
+    <script>
+        const fetcher = GraphiQL.createFetcher({ url: '/graphql' });
+        ReactDOM.render(
+            React.createElement(GraphiQL, { fetcher: fetcher }),
+            document.getElementById('graphiql')
+        );
+    </script>
+</body>
+</html>
+");
+});
+
 // Global Exception Handler Middleware
 // Java Spring Boot: @ControllerAdvice with @ExceptionHandler
 // ONLY handles exceptions from Categorías (traditional approach)
@@ -106,6 +212,30 @@ app.UseHttpsRedirection();
 
 // CORS
 app.UseCors("AllowAll");
+
+// Authentication & Authorization
+// Java Spring Boot: Spring Security filter chain
+app.UseAuthentication();
+app.UseAuthorization();
+
+// WebSocket support
+// Java Spring Boot: @ServerEndpoint or WebSocketHandler
+app.UseWebSockets();
+
+// WebSocket endpoint for producto notifications
+app.Map("/ws/v1/productos", async context =>
+{
+    if (context.WebSockets.IsWebSocketRequest)
+    {
+        var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+        var handler = context.RequestServices.GetRequiredService<ProductoWebSocketHandler>();
+        await handler.HandleConnectionAsync(context, webSocket);
+    }
+    else
+    {
+        context.Response.StatusCode = 400;
+    }
+});
 
 // Map Controllers
 // Java Spring Boot: @RestController classes automatically mapped
@@ -146,7 +276,7 @@ using (var scope = app.Services.CreateScope())
 app.Logger.LogInformation("""
     
     ════════════════════════════════════════════════════════════════════════════
-    🏬 TiendaApi - Educational Dual Error Handling Demo
+    🏬 TiendaApi - Educational Dual Error Handling Demo + Runtime Features
     ════════════════════════════════════════════════════════════════════════════
     
     📚 EDUCATIONAL ENDPOINTS:
@@ -163,20 +293,42 @@ app.Logger.LogInformation("""
        → Familiar to Java/Spring Boot developers
     
     🟢 MODERN RESULT PATTERN (functional programming):
-       GET    /api/productos           - List all products
-       GET    /api/productos/{id}      - Get product by ID
-       POST   /api/productos           - Create product
-       PUT    /api/productos/{id}      - Update product
-       DELETE /api/productos/{id}      - Delete product
+       GET    /api/productos           - List all products (with Redis cache)
+       GET    /api/productos/{id}      - Get product by ID (with cache-aside)
+       POST   /api/productos           - Create product (WebSocket + Email notification)
+       PUT    /api/productos/{id}      - Update product (WebSocket notification)
+       DELETE /api/productos/{id}      - Delete product (WebSocket notification)
        
        → Returns Result<T, AppError>
        → NO try/catch blocks
        → Pattern matching for error handling
        → Explicit, type-safe, better performance
+       → Integrated with Redis cache, WebSocket, Email
+    
+    🔐 AUTHENTICATION (JWT):
+       POST   /v1/auth/signup          - Register new user
+       POST   /v1/auth/signin          - Login and get JWT token
+       
+       → BCrypt password hashing
+       → JWT token generation
+       → Use token in Authorization: Bearer <token> header
+    
+    🔌 WEBSOCKET (Real-time notifications):
+       WS     /ws/v1/productos         - WebSocket endpoint for producto notifications
+       
+       → Connect with WebSocket client
+       → Receive real-time notifications on producto CREATED/UPDATED/DELETED
+    
+    🔍 GRAPHQL:
+       POST   /graphql                 - GraphQL query endpoint
+       GET    /graphiql                - GraphiQL interactive UI
+       
+       → Query productos and categorias
+       → Example: { productos { id nombre precio } }
     
     📖 Swagger Documentation: http://localhost:5000
     
-    Compare both approaches to learn when to use each pattern! 🚀
+    Compare both error handling approaches and explore the runtime features! 🚀
     ════════════════════════════════════════════════════════════════════════════
     """);
 

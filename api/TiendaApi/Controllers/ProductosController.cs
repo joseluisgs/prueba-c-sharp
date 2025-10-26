@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TiendaApi.Common;
 using TiendaApi.Models.DTOs;
@@ -34,6 +35,8 @@ namespace TiendaApi.Controllers;
 /// - Functional programming mindset
 /// - Want explicit error handling
 /// - Modern greenfield projects
+/// 
+/// PROTECTED: Requires JWT authentication for POST, PUT, DELETE operations
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -50,11 +53,12 @@ public class ProductosController : ControllerBase
     }
 
     /// <summary>
-    /// Get all products
+    /// Get all products (public access)
     /// GET /api/productos
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<ProductoDto>), StatusCodes.Status200OK)]
+    [AllowAnonymous]
     public async Task<IActionResult> GetAll()
     {
         // NO try/catch needed - Result Pattern handles errors
@@ -68,7 +72,7 @@ public class ProductosController : ControllerBase
     }
 
     /// <summary>
-    /// Get product by ID
+    /// Get product by ID (public access)
     /// GET /api/productos/{id}
     /// 
     /// NO try/catch - errors are values returned by service
@@ -84,6 +88,7 @@ public class ProductosController : ControllerBase
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ProductoDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [AllowAnonymous]
     public async Task<IActionResult> GetById(long id)
     {
         var resultado = await _service.FindByIdAsync(id);
@@ -101,12 +106,13 @@ public class ProductosController : ControllerBase
     }
 
     /// <summary>
-    /// Get products by category
+    /// Get products by category (public access)
     /// GET /api/productos/categoria/{categoriaId}
     /// </summary>
     [HttpGet("categoria/{categoriaId}")]
     [ProducesResponseType(typeof(IEnumerable<ProductoDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [AllowAnonymous]
     public async Task<IActionResult> GetByCategoria(long categoriaId)
     {
         var resultado = await _service.FindByCategoriaIdAsync(categoriaId);
@@ -122,7 +128,7 @@ public class ProductosController : ControllerBase
     }
 
     /// <summary>
-    /// Create new product
+    /// Create new product (requires authentication)
     /// POST /api/productos
     /// 
     /// NO try/catch for validation errors
@@ -133,7 +139,9 @@ public class ProductosController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(ProductoDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Policy = "RequireUserRole")]
     public async Task<IActionResult> Create([FromBody] ProductoRequestDto dto)
     {
         var resultado = await _service.CreateAsync(dto);
@@ -158,7 +166,7 @@ public class ProductosController : ControllerBase
     }
 
     /// <summary>
-    /// Update existing product
+    /// Update existing product (requires authentication)
     /// PUT /api/productos/{id}
     /// 
     /// Multiple failure scenarios handled cleanly with pattern matching
@@ -167,6 +175,8 @@ public class ProductosController : ControllerBase
     [HttpPut("{id}")]
     [ProducesResponseType(typeof(ProductoDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [Authorize(Policy = "RequireUserRole")]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Update(long id, [FromBody] ProductoRequestDto dto)
     {
@@ -189,7 +199,7 @@ public class ProductosController : ControllerBase
     }
 
     /// <summary>
-    /// Delete product
+    /// Delete product (requires authentication)
     /// DELETE /api/productos/{id}
     /// 
     /// Result<AppError> for void operations
@@ -198,6 +208,8 @@ public class ProductosController : ControllerBase
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [Authorize(Policy = "RequireUserRole")]
     public async Task<IActionResult> Delete(long id)
     {
         var resultado = await _service.DeleteAsync(id);
