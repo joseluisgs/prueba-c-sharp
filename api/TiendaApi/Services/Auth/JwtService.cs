@@ -56,6 +56,7 @@ public class JwtService : IJwtService
 
         var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
         
+        // Note: user.Username comes from database (already validated), not user input
         _logger.LogInformation("JWT token generated for user: {Username}", user.Username);
         
         return tokenString;

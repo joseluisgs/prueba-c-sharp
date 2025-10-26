@@ -40,7 +40,9 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> SignUp([FromBody] RegisterDto dto)
     {
-        _logger.LogInformation("Signup request for username: {Username}", dto.Username);
+        // Sanitize username for logging to prevent log forging
+        var sanitizedUsername = dto.Username?.Replace("\n", "").Replace("\r", "");
+        _logger.LogInformation("Signup request for username: {Username}", sanitizedUsername);
 
         // Validate input
         if (string.IsNullOrWhiteSpace(dto.Username) || dto.Username.Length < 3)
@@ -105,7 +107,7 @@ public class AuthController : ControllerBase
             User = userDto
         };
 
-        _logger.LogInformation("User registered successfully: {Username}", dto.Username);
+        _logger.LogInformation("User registered successfully: {Username}", sanitizedUsername);
 
         return CreatedAtAction(nameof(SignUp), response);
     }
@@ -119,13 +121,15 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> SignIn([FromBody] LoginDto dto)
     {
-        _logger.LogInformation("Signin request for username: {Username}", dto.Username);
+        // Sanitize username for logging to prevent log forging
+        var sanitizedUsername = dto.Username?.Replace("\n", "").Replace("\r", "");
+        _logger.LogInformation("Signin request for username: {Username}", sanitizedUsername);
 
         // Find user by username
         var user = await _userRepository.FindByUsernameAsync(dto.Username);
         if (user == null)
         {
-            _logger.LogWarning("Signin failed: User not found - {Username}", dto.Username);
+            _logger.LogWarning("Signin failed: User not found - {Username}", sanitizedUsername);
             return Unauthorized(new { message = "Invalid username or password" });
         }
 
@@ -133,7 +137,7 @@ public class AuthController : ControllerBase
         var passwordValid = BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash);
         if (!passwordValid)
         {
-            _logger.LogWarning("Signin failed: Invalid password - {Username}", dto.Username);
+            _logger.LogWarning("Signin failed: Invalid password - {Username}", sanitizedUsername);
             return Unauthorized(new { message = "Invalid username or password" });
         }
 
@@ -155,7 +159,7 @@ public class AuthController : ControllerBase
             User = userDto
         };
 
-        _logger.LogInformation("User signed in successfully: {Username}", dto.Username);
+        _logger.LogInformation("User signed in successfully: {Username}", sanitizedUsername);
 
         return Ok(response);
     }

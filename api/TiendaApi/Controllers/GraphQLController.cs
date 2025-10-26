@@ -38,7 +38,13 @@ public class GraphQLController : ControllerBase
             return BadRequest(new { message = "Query is required" });
         }
 
-        _logger.LogInformation("Executing GraphQL query: {Query}", request.Query);
+        // Sanitize query for logging (truncate if too long, remove newlines)
+        var sanitizedQuery = request.Query.Replace("\n", " ").Replace("\r", "");
+        if (sanitizedQuery.Length > 100)
+        {
+            sanitizedQuery = sanitizedQuery.Substring(0, 97) + "...";
+        }
+        _logger.LogInformation("Executing GraphQL query: {Query}", sanitizedQuery);
 
         var result = await _documentExecuter.ExecuteAsync(options =>
         {
