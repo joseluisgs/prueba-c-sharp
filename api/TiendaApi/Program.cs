@@ -14,6 +14,7 @@ using TiendaApi.Services;
 using TiendaApi.Services.Auth;
 using TiendaApi.Services.Cache;
 using TiendaApi.Services.Email;
+using TiendaApi.Services.Pedidos;
 using TiendaApi.WebSockets;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -65,11 +66,13 @@ builder.Services.AddDbContext<TiendaDbContext>(options =>
 builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
 builder.Services.AddScoped<IProductoRepository, ProductoRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IPedidosRepository, PedidosRepository>();
 
 // Services
 // Java Spring Boot: @Service classes automatically registered
 builder.Services.AddScoped<CategoriaService>();
 builder.Services.AddScoped<ProductoService>();
+builder.Services.AddScoped<IPedidosService, PedidosService>();
 
 // JWT Service
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -90,6 +93,7 @@ builder.Services.AddHostedService<EmailBackgroundService>();
 
 // WebSocket Handler
 builder.Services.AddSingleton<ProductoWebSocketHandler>();
+builder.Services.AddSingleton<PedidoWebSocketHandler>();
 
 // GraphQL Services
 builder.Services.AddScoped<IDocumentExecuter, DocumentExecuter>();
@@ -229,6 +233,21 @@ app.Map("/ws/v1/productos", async context =>
     {
         var webSocket = await context.WebSockets.AcceptWebSocketAsync();
         var handler = context.RequestServices.GetRequiredService<ProductoWebSocketHandler>();
+        await handler.HandleConnectionAsync(context, webSocket);
+    }
+    else
+    {
+        context.Response.StatusCode = 400;
+    }
+});
+
+// WebSocket endpoint for pedido notifications
+app.Map("/ws/v1/pedidos", async context =>
+{
+    if (context.WebSockets.IsWebSocketRequest)
+    {
+        var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+        var handler = context.RequestServices.GetRequiredService<PedidoWebSocketHandler>();
         await handler.HandleConnectionAsync(context, webSocket);
     }
     else
