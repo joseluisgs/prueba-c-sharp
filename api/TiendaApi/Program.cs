@@ -89,7 +89,7 @@ builder.Services.AddScoped<IEmailService, MailKitEmailService>();
 builder.Services.AddHostedService<EmailBackgroundService>();
 
 // WebSocket Handler
-builder.Services.AddSingleton<ProductoWebSocketHandler>();
+builder.Services.AddSingleton<IProductoWebSocketHandler, ProductoWebSocketHandler>();
 
 // GraphQL Services
 builder.Services.AddScoped<IDocumentExecuter, DocumentExecuter>();
