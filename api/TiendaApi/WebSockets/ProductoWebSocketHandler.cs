@@ -10,7 +10,7 @@ namespace TiendaApi.WebSockets;
 /// Java Spring equivalent: WebSocketHandler or @ServerEndpoint
 /// Manages connected clients and broadcasts notifications
 /// </summary>
-public class ProductoWebSocketHandler
+public class ProductoWebSocketHandler : IProductoWebSocketHandler
 {
     private readonly ConcurrentDictionary<string, WebSocket> _connections;
     private readonly ILogger<ProductoWebSocketHandler> _logger;
