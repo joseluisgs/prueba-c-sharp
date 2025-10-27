@@ -157,18 +157,18 @@ dotnet run --project TiendaApi
 curl -X POST http://localhost:5031/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "username": "testuser",
-    "email": "test@example.com",
-    "password": "Test123!",
-    "fullName": "Test User"
+    "username": "YOUR_USERNAME",
+    "email": "YOUR_EMAIL@example.com",
+    "password": "YOUR_PASSWORD",
+    "fullName": "Your Full Name"
   }'
 
 # Login to get JWT token
 curl -X POST http://localhost:5031/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "username": "testuser",
-    "password": "Test123!"
+    "username": "YOUR_USERNAME",
+    "password": "YOUR_PASSWORD"
   }'
 ```
 
