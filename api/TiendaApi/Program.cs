@@ -104,7 +104,7 @@ builder.Services.AddScoped<CategoriaType>();
 
 // AutoMapper
 // Java Spring Boot: ModelMapper bean configuration
-builder.Services.AddAutoMapper(typeof(MappingProfile));
+builder.Services.AddAutoMapper(typeof(MappingProfile), typeof(TiendaApi.Mappings.PedidoProfile));
 
 // ============================================================================
 // AUTHENTICATION & AUTHORIZATION - Similar to Spring Security
